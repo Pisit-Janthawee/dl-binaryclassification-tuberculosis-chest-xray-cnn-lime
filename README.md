@@ -27,6 +27,8 @@
 - **Model** → small CNN from scratch → EfficientNetB0 transfer learning, head then fine-tune
 - **Shortcut check** → new: image sources, file properties, mean-image difference, lungs-hidden test
 
+![Leaky vs leak-free pipeline](assets/tb_leakfree_pipeline.png)
+
 ## [4/9] Data and shortcuts
 
 - **Balance** → 700 TB of 4,200 (16.7%), 1 TB for every 5 normal
@@ -59,6 +61,11 @@
 - **Model** → EfficientNetB0 (ImageNet) + sigmoid head; frozen BatchNorm; mixed precision on GPU
 - **[1/2] Head** → backbone frozen, Adam `1e-3`
 - **[2/2] Fine-tune** → last `FINE_TUNE_LAST_N` layers, Adam `1e-5`; head weights restored if fine-tuning didn't beat them
+- **Inside the model** → per-stage parameter table, Swish activation and a knob table (what each setting controls and trades) in section 10
+
+![EfficientNetB0 architecture](assets/tb_efficientnet_architecture.png)
+
+Editable sources: `assets/*.drawio` (open in draw.io).
 
 ## [8/9] Evaluation and where the model looks
 
