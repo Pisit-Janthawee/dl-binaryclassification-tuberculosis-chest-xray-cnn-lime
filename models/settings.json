@@ -1,0 +1,5 @@
+{
+ "img_size": 224,
+ "enhance": "clahe",
+ "threshold": 0.881
+}
