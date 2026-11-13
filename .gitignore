@@ -1,3 +1,5 @@
 *.csv
 *.keras
 .ipynb_checkpoints/
+!models/*.keras
+__pycache__/
