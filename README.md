@@ -72,6 +72,8 @@ Binary classification | Convolutional Neural Network (CNN) | EfficientNetB0 | Tr
 
 ![pipeline](assets/tb_pipeline.png)
 
+![difference hash](assets/m_dhash.png)
+
 ## [4/8] Image preparation
 
 - **Grayscale 224 × 224** → one channel, copied to 3 per batch for the ImageNet backbone
@@ -93,6 +95,11 @@ Binary classification | Convolutional Neural Network (CNN) | EfficientNetB0 | Tr
 ![training curves](assets/10_training_curves.png)
 
 ## [6/8] Explanations (LIME)
+
+- **LIME in one line** → hide parts of the X-ray and watch how P(TB) changes; the parts that change it most are the parts the CNN looks at
+- **How** → cut the X-ray into ~60 pieces (superpixels) → 300 copies with about half the pieces painted black → P(TB) for every copy → a straight-line model gives each piece a weight
+
+![LIME step by step](assets/m_lime_2_perturbation.png)
 
 - one test X-ray per confusion-matrix cell; green → towards TB, red → towards normal, cyan → lung mask
 - true positive → green in the left lung, but also on a black border strip; misses → strongest regions on the abdomen and edges
