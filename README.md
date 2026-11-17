@@ -68,6 +68,7 @@ Binary classification | Convolutional Neural Network (CNN) | EfficientNetB0 | Tr
 ## [3/8] Near-duplicates and split
 
 - **Difference hash** → 16 × 16 grid → 256-bit fingerprint; ≤ 10 differing bits = look-alike → 20 X-rays in 9 groups, none mixing classes
+- **Why 10 of 256** → each bit asks "brighter than the right neighbour?", so a resized, brighter copy is only 2 bits away, while the median X-ray is 32 bits from its nearest neighbour
 - **Split** → `StratifiedGroupKFold` by group → train 3,004 · validation 599 · test 597, each ~16.6 % TB
 
 ![pipeline](assets/tb_pipeline.png)
@@ -87,8 +88,11 @@ Binary classification | Convolutional Neural Network (CNN) | EfficientNetB0 | Tr
 
 - **EfficientNetB0** (ImageNet) + global average pooling + dropout 0.3 + sigmoid
 - **Class weights** → normal 0.60, TB 2.99 (each TB X-ray counts ~5 ×)
+- **Loss, part by part** → the sigmoid turns the raw score $z$ into P(TB) (the 0.881 threshold = $z > 2.0$); in the weighted binary cross-entropy the same doubt (P = 0.5) costs 2.07 on a TB X-ray and 0.42 on a normal one. The loss rewards the right label, not the right reason, so nothing in it stops a source shortcut
 - **Online augmentation** → rotation ±5°, zoom ±10 %, shift ±5 %, contrast ±10 %, no flips (the heart stays on the left)
 - **Training** → head (lr 1e-3, best val AUC 0.9938) → last 20 layers (lr 1e-5, best val AUC 0.9960)
+
+![weighted binary cross-entropy](assets/m_bce_weighted.png)
 
 ![architecture](assets/tb_efficientnet_architecture.png)
 
@@ -98,6 +102,7 @@ Binary classification | Convolutional Neural Network (CNN) | EfficientNetB0 | Tr
 
 - **LIME in one line** → hide parts of the X-ray and watch how P(TB) changes; the parts that change it most are the parts the CNN looks at
 - **How** → cut the X-ray into ~60 pieces (superpixels) → 300 copies with about half the pieces painted black → P(TB) for every copy → a straight-line model gives each piece a weight
+- **The straight line, part by part** → fitted with more trust in copies close to the original (half the pieces shown → weight 0.50, 10 % shown → 0.02) and a small ridge penalty; it assumes the pieces act one by one, and black holes are unlike any training X-ray, so a map is a check on one decision, not proof
 
 ![LIME step by step](assets/m_lime_2_perturbation.png)
 
