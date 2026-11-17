@@ -48,12 +48,30 @@ Binary classification | Convolutional Neural Network (CNN) | EfficientNetB0 | Tr
 
 ![mean image](assets/05_mean_image.png)
 
+**Question:** do TB lungs really look different, or only the rest of the X-ray?
+
+**Answer:** both, but the source fingerprint is much stronger than the disease signal. Each X-ray gets one number per feature; the AUC is the chance that a TB X-ray has the higher value (0.5 = no difference). Every difference is statistically significant (Mann-Whitney, Bonferroni p < 0.004), so the AUC is what tells how big it is.
+
+| Where | Number per X-ray | Normal → TB (median) | AUC | Size |
+|---|---|---|---|---|
+| file | colour channel difference (tinted files) | 0 → 9.8 | 0.78 | large |
+| outside the lungs | contrast (std) | 66.7 → 53.7 | 0.28 | large |
+| outside the lungs | black frame % | 17.4 → 8.3 | 0.34 | medium |
+| lungs | upper-lung brightness | 84 → 101 | 0.63 | small |
+| lungs | lung area % | 24.3 → 17.9 | 0.37 | small |
+| lungs | lung brightness | 88 → 96 | 0.55 | negligible |
+
+- **Inside the lungs** → TB lungs are brighter (denser tissue), most of all at the top where TB usually starts, and smaller; the grey-level curve moves from a peak near 90 to near 130
+- **Outside and in the file** → only TB files have tinted colour channels, and TB X-rays have less contrast around the lungs → scanner and source, not disease
+
+![normal vs TB](assets/08_normal_vs_tb.png)
+
 ## [1/8] Data
 
 - **Dataset** → [Tuberculosis (TB) Chest X-ray Database](https://www.kaggle.com/datasets/tawsifurrahman/tuberculosis-tb-chest-xray-dataset) · 3,500 normal + 700 TB · 512 × 512 PNG (not stored in this repository)
 - **Imbalance** → 1 TB for every 5 normal → "always normal" is 83 % accurate and useless → ROC-AUC, sensitivity, specificity
 - **Sources** → NLM Montgomery + Shenzhen (800, 49 % TB) · Belarus (306, all TB) · Kaggle / RSNA (3,094, all normal)
-- **Files** → grayscale files are all TB; TB files are smaller and more varied (median 142 kB vs 169 kB)
+- **Files** → every normal file is RGB with R = G = B; the TB files are either grayscale (308) or RGB with **tinted** channels (392, photos of films) → the colour alone gives the class away; TB files are also smaller and more varied (median 142 kB vs 169 kB)
 
 ![samples](assets/04_samples.png)
 
@@ -77,7 +95,23 @@ Binary classification | Convolutional Neural Network (CNN) | EfficientNetB0 | Tr
 
 ## [4/8] Image preparation
 
-- **Grayscale 224 × 224** → one channel, copied to 3 per batch for the ImageNet backbone
+- **A picture is a table of numbers** → an RGB file holds 3 numbers per pixel (red, green, blue), a grayscale file 1 (0 = black air, 255 = white bone)
+- **Grayscale 224 × 224** → every file is read as one grey channel ($0.299\,R + 0.587\,G + 0.114\,B$), which also removes the tint of the photographed films; copied to 3 channels per batch because the ImageNet backbone expects RGB
+
+![from a PNG file to the model input](assets/m_image_array.png)
+
+- **Why 224 and not the full 512?** → time and memory grow with the pixels, i.e. with the square of the side. A small test on a home CPU (same model shape, batches of 8):
+
+| Image size | Pixels | One training step | All 4,200 X-rays in RAM |
+|---|---|---|---|
+| 64 × 64 | 4,096 (1×) | 0.11 s (1×) | 16 MB |
+| 128 × 128 | 16,384 (4×) | 0.24 s (2.2×) | 66 MB |
+| 256 × 256 | 65,536 (16×) | 0.97 s (8.7×) | 262 MB |
+
+  Reading and resizing one PNG takes about 3.5 ms at every size; the model is where size costs time. 224 × 224 is also EfficientNetB0's pre-training size. `SIZE_BENCHMARK` in the notebook repeats the test (on Kaggle's GPU).
+
+![image size vs time](assets/m_size_time.png)
+
 - **CLAHE** → contrast per 8 × 8 tile, clip 2.0 → faint patches easier to see
 
 ![enhancement](assets/07_enhancement.png)
@@ -89,7 +123,9 @@ Binary classification | Convolutional Neural Network (CNN) | EfficientNetB0 | Tr
 - **EfficientNetB0** (ImageNet) + global average pooling + dropout 0.3 + sigmoid
 - **Class weights** → normal 0.60, TB 2.99 (each TB X-ray counts ~5 ×)
 - **Loss, part by part** → the sigmoid turns the raw score $z$ into P(TB) (the 0.881 threshold = $z > 2.0$); in the weighted binary cross-entropy the same doubt (P = 0.5) costs 2.07 on a TB X-ray and 0.42 on a normal one. The loss rewards the right label, not the right reason, so nothing in it stops a source shortcut
-- **Online augmentation** → rotation ±5°, zoom ±10 %, shift ±5 %, contrast ±10 %, no flips (the heart stays on the left)
+- **Online augmentation, clinically safe only** → rotation ±5°, zoom ±10 %, shift ±5 %, contrast ±10 %: changes a real X-ray could also have. Not used: left-right flip (heart on the right, like dextrocardia), upside-down flip, large rotations (lung tops leave the frame), shear and one-axis stretch (bent ribs, a different heart-to-chest ratio). Guidance: Elgendi et al., *Frontiers in Medicine*, 2021
+
+![clinically safe and unsafe augmentation](assets/m_augment_clinical.png)
 - **Training** → head (lr 1e-3, best val AUC 0.9938) → last 20 layers (lr 1e-5, best val AUC 0.9960)
 
 ![weighted binary cross-entropy](assets/m_bce_weighted.png)
@@ -132,4 +168,4 @@ Binary classification | Convolutional Neural Network (CNN) | EfficientNetB0 | Tr
 | `app.py`, `requirements.txt` | Gradio screening app |
 | `models/` | trained model and threshold |
 | `assets/` | figures and editable draw.io diagrams |
-| `arch/` | first version of this project |
+| `arch/` | the original notebook, kept for reference |
