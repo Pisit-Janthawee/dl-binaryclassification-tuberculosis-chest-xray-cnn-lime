@@ -1,10 +1,10 @@
 # Tuberculosis Chest X-ray: CNN + LIME
 
-![Gradio screening app](assets/app_gradio.png)
+![Gradio screening app](assets/png/app_gradio.png)
 
 Binary classification | Convolutional Neural Network (CNN) | EfficientNetB0 | Transfer learning | TensorFlow / Keras | Medical X-ray imaging | Contrast enhancement (CLAHE) | Near-duplicate detection | Grouped split | Class imbalance | LIME | Shortcut testing | Gradio
 
-![What this project builds](assets/tb_overview.png)
+![What this project builds](assets/png/tb_overview.png)
 
 ## Objective
 
@@ -28,7 +28,7 @@ Binary classification | Convolutional Neural Network (CNN) | EfficientNetB0 | Tr
 | Specificity (normal cleared) | **99.8 %** · 1 false alarm in 498 |
 | Threshold (set on validation for 90 % sensitivity) | 0.881 |
 
-![evaluation](assets/11_evaluation.png)
+![evaluation](assets/png/11_evaluation.png)
 
 **Question:** is it reading the lungs, or the hospital?
 
@@ -40,13 +40,13 @@ Binary classification | Convolutional Neural Network (CNN) | EfficientNetB0 | Tr
 | Lungs hidden | 0.981 | 49.5 % |
 | Lungs only | 0.691 | 69.7 % |
 
-![lungs hidden](assets/12_lungs_hidden.png)
+![lungs hidden](assets/png/12_lungs_hidden.png)
 
 **Question:** what does the average TB X-ray look like compared with a normal one?
 
 **Answer:** brighter inside the lungs (denser tissue, the disease signal), but the largest differences sit at the top corners and borders (up to +60 grey levels): acquisition differences between sources.
 
-![mean image](assets/05_mean_image.png)
+![mean image](assets/png/05_mean_image.png)
 
 **Question:** do TB lungs really look different, or only the rest of the X-ray?
 
@@ -64,7 +64,7 @@ Binary classification | Convolutional Neural Network (CNN) | EfficientNetB0 | Tr
 - **Inside the lungs** → TB lungs are brighter (denser tissue), most of all at the top where TB usually starts, and smaller; the grey-level curve moves from a peak near 90 to near 130
 - **Outside and in the file** → only TB files have tinted colour channels, and TB X-rays have less contrast around the lungs → scanner and source, not disease
 
-![normal vs TB](assets/08_normal_vs_tb.png)
+![normal vs TB](assets/png/08_normal_vs_tb.png)
 
 ## [1/8] Data
 
@@ -73,7 +73,7 @@ Binary classification | Convolutional Neural Network (CNN) | EfficientNetB0 | Tr
 - **Sources** → NLM Montgomery + Shenzhen (800, 49 % TB) · Belarus (306, all TB) · Kaggle / RSNA (3,094, all normal)
 - **Files** → every normal file is RGB with R = G = B; the TB files are either grayscale (308) or RGB with **tinted** channels (392, photos of films) → the colour alone gives the class away; TB files are also smaller and more varied (median 142 kB vs 169 kB)
 
-![samples](assets/04_samples.png)
+![samples](assets/png/04_samples.png)
 
 ## [2/8] Run on Kaggle
 
@@ -89,16 +89,16 @@ Binary classification | Convolutional Neural Network (CNN) | EfficientNetB0 | Tr
 - **Why 10 of 256** → each bit asks "brighter than the right neighbour?", so a resized, brighter copy is only 2 bits away, while the median X-ray is 32 bits from its nearest neighbour
 - **Split** → `StratifiedGroupKFold` by group → train 3,004 · validation 599 · test 597, each ~16.6 % TB
 
-![pipeline](assets/tb_pipeline.png)
+![pipeline](assets/png/tb_pipeline.png)
 
-![difference hash](assets/m_dhash.png)
+![difference hash](assets/png/m_dhash.png)
 
 ## [4/8] Image preparation
 
 - **A picture is a table of numbers** → an RGB file holds 3 numbers per pixel (red, green, blue), a grayscale file 1 (0 = black air, 255 = white bone)
 - **Grayscale 224 × 224** → every file is read as one grey channel ($0.299\,R + 0.587\,G + 0.114\,B$), which also removes the tint of the photographed films; copied to 3 channels per batch because the ImageNet backbone expects RGB
 
-![from a PNG file to the model input](assets/m_image_array.png)
+![from a PNG file to the model input](assets/png/m_image_array.png)
 
 - **Why 224 and not the full 512?** → time and memory grow with the pixels, i.e. with the square of the side. A small test on a home CPU (same model shape, batches of 8):
 
@@ -110,11 +110,11 @@ Binary classification | Convolutional Neural Network (CNN) | EfficientNetB0 | Tr
 
   Reading and resizing one PNG takes about 3.5 ms at every size; the model is where size costs time. 224 × 224 is also EfficientNetB0's pre-training size. `SIZE_BENCHMARK` in the notebook repeats the test (on Kaggle's GPU).
 
-![image size vs time](assets/m_size_time.png)
+![image size vs time](assets/png/m_size_time.png)
 
 - **CLAHE** → contrast per 8 × 8 tile, clip 2.0 → faint patches easier to see
 
-![enhancement](assets/07_enhancement.png)
+![enhancement](assets/png/07_enhancement.png)
 
 - **Lung mask** → Otsu threshold + morphology → rough, used only for the shortcut test
 
@@ -125,14 +125,14 @@ Binary classification | Convolutional Neural Network (CNN) | EfficientNetB0 | Tr
 - **Loss, part by part** → the sigmoid turns the raw score $z$ into P(TB) (the 0.881 threshold = $z > 2.0$); in the weighted binary cross-entropy the same doubt (P = 0.5) costs 2.07 on a TB X-ray and 0.42 on a normal one. The loss rewards the right label, not the right reason, so nothing in it stops a source shortcut
 - **Online augmentation, clinically safe only** → rotation ±5°, zoom ±10 %, shift ±5 %, contrast ±10 %: changes a real X-ray could also have. Not used: left-right flip (heart on the right, like dextrocardia), upside-down flip, large rotations (lung tops leave the frame), shear and one-axis stretch (bent ribs, a different heart-to-chest ratio). Guidance: Elgendi et al., *Frontiers in Medicine*, 2021
 
-![clinically safe and unsafe augmentation](assets/m_augment_clinical.png)
+![clinically safe and unsafe augmentation](assets/png/m_augment_clinical.png)
 - **Training** → head (lr 1e-3, best val AUC 0.9938) → last 20 layers (lr 1e-5, best val AUC 0.9960)
 
-![weighted binary cross-entropy](assets/m_bce_weighted.png)
+![weighted binary cross-entropy](assets/png/m_bce_weighted.png)
 
-![architecture](assets/tb_efficientnet_architecture.png)
+![architecture](assets/png/tb_efficientnet_architecture.png)
 
-![training curves](assets/10_training_curves.png)
+![training curves](assets/png/10_training_curves.png)
 
 ## [6/8] Explanations (LIME)
 
@@ -140,12 +140,12 @@ Binary classification | Convolutional Neural Network (CNN) | EfficientNetB0 | Tr
 - **How** → cut the X-ray into ~60 pieces (superpixels) → 300 copies with about half the pieces painted black → P(TB) for every copy → a straight-line model gives each piece a weight
 - **The straight line, part by part** → fitted with more trust in copies close to the original (half the pieces shown → weight 0.50, 10 % shown → 0.02) and a small ridge penalty; it assumes the pieces act one by one, and black holes are unlike any training X-ray, so a map is a check on one decision, not proof
 
-![LIME step by step](assets/m_lime_2_perturbation.png)
+![LIME step by step](assets/png/m_lime_2_perturbation.png)
 
 - one test X-ray per confusion-matrix cell; green → towards TB, red → towards normal, cyan → lung mask
 - true positive → green in the left lung, but also on a black border strip; misses → strongest regions on the abdomen and edges
 
-![LIME](assets/13_lime.png)
+![LIME](assets/png/13_lime.png)
 
 ## [7/8] App
 
@@ -167,5 +167,5 @@ Binary classification | Convolutional Neural Network (CNN) | EfficientNetB0 | Tr
 | `tuberculosis_classification_cnn_lime.ipynb` | full notebook (Kaggle-ready) |
 | `app.py`, `requirements.txt` | Gradio screening app |
 | `models/` | trained model and threshold |
-| `assets/` | figures and editable draw.io diagrams |
+| `assets/png/` · `assets/drawio/` | figures (PNG) · editable draw.io diagrams |
 | `arch/` | the original notebook, kept for reference |
